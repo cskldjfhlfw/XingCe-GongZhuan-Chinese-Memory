@@ -1,0 +1,44 @@
+name: Publish npm
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm install --global npm@11
+      - run: npm ci
+      - name: Verify tag matches package version
+        run: node -e "if ('v' + require('./package.json').version !== process.env.GITHUB_REF_NAME) process.exit(1)"
+      - run: npm run test:syntax
+      - run: npm run test:unit
+      - name: Check whether version exists
+        id: version
+        shell: bash
+        run: |
+          if npm view "$(node -p "require('./package.json').name")@$(node -p "require('./package.json').version")" version >/dev/null 2>&1; then
+            echo 'published=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'published=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish package
+        if: steps.version.outputs.published != 'true'
+        run: npm publish --access public
+      - name: Report existing version
+        if: steps.version.outputs.published == 'true'
+        run: echo "${GITHUB_REF_NAME} is already available on npm; nothing to publish."

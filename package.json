@@ -1,0 +1,48 @@
+{
+  "name": "shiyi-browser-study-assistant",
+  "version": "1.0.0",
+  "description": "浏览器端公考学习助手，包含间隔复习、AI 错题整理、词语图谱、记忆卡片、工作记忆训练和番茄钟。",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "files": [
+    "apps/web",
+    "deployment/docker",
+    "scripts/serve.mjs",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md",
+    "SECURITY.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "workspaces": [
+    "apps/web"
+  ],
+  "bin": {
+    "shiyi-study": "scripts/serve.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cskldjfhlfw/XingCe-GongZhuan-Chinese-Memory.git"
+  },
+  "homepage": "http://yeen666.cn:17843/",
+  "bugs": {
+    "url": "https://github.com/cskldjfhlfw/XingCe-GongZhuan-Chinese-Memory/issues"
+  },
+  "scripts": {
+    "start": "npm run start --workspace @shiyi/web",
+    "test": "pwsh -NoProfile -File tests/run_all.ps1",
+    "test:unit": "node tests/unit/core_contract_test.mjs && node tests/unit/assistant_contract_test.mjs && node tests/unit/training_contract_test.mjs && node tests/unit/pomodoro_contract_test.mjs && node tests/unit/live_review_contract_test.mjs && node tests/unit/idiom_graph_contract_test.mjs && node tests/unit/idiom_taxonomy_test.mjs && node tests/unit/peanut800_contract_test.mjs",
+    "test:syntax": "node --check scripts/serve.mjs && node --check apps/web/src/main.js && node --check apps/web/src/core/utils.js && node --check apps/web/src/core/indexed-db.js && node --check apps/web/src/modules/assistant.js && node --check apps/web/src/modules/deepseek-client.js && node --check apps/web/src/modules/training.js && node --check apps/web/src/modules/pomodoro.js && node --check apps/web/src/modules/live-review.js && node --check apps/web/src/modules/idiom-graph.js && node --check apps/web/src/modules/idiom-taxonomy.js && node --check apps/web/src/modules/peanut800.js",
+    "pack:check": "npm pack --dry-run",
+    "prepublishOnly": "npm run test:syntax && npm run test:unit && npm run pack:check"
+  },
+  "keywords": ["公考", "行测", "study", "spaced-repetition", "indexeddb", "n-back", "pomodoro", "knowledge-graph"],
+  "devDependencies": {
+    "playwright": "^1.54.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
