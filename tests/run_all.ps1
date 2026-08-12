@@ -19,6 +19,7 @@ foreach ($relativePath in $obsoletePaths) {
 node --check apps/web/src/main.js
 node --check apps/web/src/core/utils.js
 node --check apps/web/src/core/indexed-db.js
+node --check apps/web/src/core/global-backup.js
 node --check apps/web/src/modules/assistant.js
 node --check apps/web/src/modules/deepseek-client.js
 node --check apps/web/src/modules/training.js
@@ -35,6 +36,7 @@ node --check tests/e2e/live_review_test.mjs
 node --check tests/e2e/idiom_graph_test.mjs
 node --check tests/e2e/peanut800_test.mjs
 node tests/unit/core_contract_test.mjs
+node tests/unit/global_backup_contract_test.mjs
 node tests/unit/assistant_contract_test.mjs
 node tests/unit/training_contract_test.mjs
 node tests/unit/pomodoro_contract_test.mjs

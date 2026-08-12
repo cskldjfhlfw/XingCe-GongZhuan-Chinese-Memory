@@ -6,6 +6,7 @@ import os from 'node:os';
 const root = path.resolve(import.meta.dirname, '..');
 const screenshotDir = process.env.SHIYI_SCREENSHOT_DIR || path.join(os.tmpdir(), 'shiyi-test-screenshots');
 const memoryBackupPath = path.join(root, 'tests', '.tmp-memory-backup.json');
+const globalBackupPath = path.join(root, 'tests', '.tmp-global-backup.json');
 const idiomBackupPath = path.join(root, 'tests', '.tmp-idiom-backup.json');
 const url = process.env.SHIYI_URL || 'http://127.0.0.1:8765';
 fs.mkdirSync(screenshotDir, { recursive: true });
@@ -27,9 +28,9 @@ async function importBackup(page, actionName, filePath, confirmation) {
   const chooserPromise = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: actionName }).click();
   const chooser = await chooserPromise;
-  const confirmationPromise = page.getByText(confirmation, { exact: true }).waitFor();
+  const confirmationPromise = confirmation ? page.getByText(confirmation, { exact: true }).waitFor() : null;
   await chooser.setFiles(filePath);
-  await confirmationPromise;
+  if (confirmationPromise) await confirmationPromise;
 }
 
 try {
@@ -99,21 +100,55 @@ try {
   await importBackup(desktop, /合并导入/, idiomBackupPath, '已合并导入 1 个词语');
   await desktop.getByRole('heading', { name: '缘木求鱼', exact: true }).waitFor();
 
-  await desktop.getByRole('button', { name: '记忆备份', exact: true }).click();
-  const memoryDownloadPromise = desktop.waitForEvent('download');
-  await desktop.getByRole('button', { name: /^导出 JSON/ }).click();
-  await (await memoryDownloadPromise).saveAs(memoryBackupPath);
-  const memoryBackup = JSON.parse(fs.readFileSync(memoryBackupPath, 'utf8'));
-  if (memoryBackup.format !== 'shiyi-memory-backup' || memoryBackup.items.length !== 1) throw new Error('Original memory JSON backup changed');
-  if ('idioms' in memoryBackup || !Array.isArray(memoryBackup.items[0].reviews)) throw new Error('Memory backup format is not isolated');
+  await desktop.getByRole('button', { name: '全局备份', exact: true }).click();
+  const globalDownloadPromise = desktop.waitForEvent('download');
+  await desktop.getByRole('button', { name: /导出全局 JSON/ }).click();
+  await (await globalDownloadPromise).saveAs(globalBackupPath);
+  const globalBackup = JSON.parse(fs.readFileSync(globalBackupPath, 'utf8'));
+  if (globalBackup.format !== 'shiyi-global-backup' || globalBackup.stores.length !== 12) throw new Error('Global backup manifest is incomplete');
+  const globalStore = (database, store) => globalBackup.stores.find(entry => entry.database === database && entry.store === store)?.records || [];
+  if (globalStore('shiyi-memory', 'items').length !== 1 || globalStore('shiyi-idioms', 'idioms').length !== 1) throw new Error('Global backup omitted memory or idiom data');
+  if (globalBackup.stores.some(entry => entry.database === 'shiyi-ai-settings')) throw new Error('Global backup leaked API credentials');
 
+  await desktop.evaluate(() => new Promise((resolve, reject) => {
+    const databases = [['shiyi-memory', 'items'], ['shiyi-idioms', 'idioms']];
+    let remaining = databases.length;
+    databases.forEach(([database, store]) => {
+      const request = indexedDB.open(database);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const tx = request.result.transaction(store, 'readwrite');
+        tx.objectStore(store).clear();
+        tx.onerror = () => reject(tx.error);
+        tx.oncomplete = () => { if (--remaining === 0) resolve(); };
+      };
+    });
+  }));
   desktop.once('dialog', dialog => dialog.accept());
-  await desktop.getByRole('button', { name: '清空此浏览器的全部数据' }).click();
+  await importBackup(desktop, /覆盖恢复/, globalBackupPath);
+  await desktop.waitForLoadState('load');
+  await desktop.getByRole('button', { name: '记忆内容', exact: true }).first().click();
+  await desktop.getByText('测试背诵内容', { exact: true }).waitFor();
   await desktop.getByRole('button', { name: '成语词语', exact: true }).first().click();
   await desktop.getByRole('heading', { name: '缘木求鱼', exact: true }).waitFor();
 
-  await desktop.getByRole('button', { name: '记忆备份', exact: true }).click();
-  await importBackup(desktop, /合并导入/, memoryBackupPath, '已合并导入 1 段记忆');
+  const memoryBackup = { format: 'shiyi-memory-backup', version: 1, exportedAt: new Date().toISOString(), items: globalStore('shiyi-memory', 'items') };
+  fs.writeFileSync(memoryBackupPath, JSON.stringify(memoryBackup));
+  await desktop.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('shiyi-memory');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const tx = request.result.transaction('items', 'readwrite');
+      tx.objectStore('items').clear();
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    };
+  }));
+  await desktop.getByRole('button', { name: '成语词语', exact: true }).first().click();
+  await desktop.getByRole('heading', { name: '缘木求鱼', exact: true }).waitFor();
+
+  await desktop.getByRole('button', { name: '全局备份', exact: true }).click();
+  await importBackup(desktop, /合并导入/, memoryBackupPath, '已合并导入 1 段旧版记忆');
   await desktop.getByRole('button', { name: '记忆内容', exact: true }).first().click();
   await desktop.getByText('测试背诵内容', { exact: true }).waitFor();
 
@@ -137,7 +172,7 @@ try {
   console.log('PASS: isolated memory/idiom databases, separate JSON backups, persistence, restore, mastered state, and responsive layout');
 } finally {
   await browser.close();
-  for (const file of [memoryBackupPath, idiomBackupPath]) {
+  for (const file of [memoryBackupPath, idiomBackupPath, globalBackupPath]) {
     if (fs.existsSync(file)) fs.unlinkSync(file);
   }
 }

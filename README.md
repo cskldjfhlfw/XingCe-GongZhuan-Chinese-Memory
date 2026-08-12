@@ -38,7 +38,8 @@ npx shiyi-browser-study-assistant 17843
 拾忆没有业务后端，学习数据保存在当前浏览器的 IndexedDB 中。服务器只提供静态页面，不保存你的题目、复习记录或 DeepSeek API Key。
 
 - 不同浏览器、设备、域名、协议和端口拥有不同的浏览器存储，数据不会自动同步。
-- 清除站点数据、重装浏览器或更换访问地址前，请先在各模块中导出 JSON 备份。
+- 清除站点数据、重装浏览器或更换访问地址前，请先使用左下角“全局备份”导出 JSON；各模块仍可单独备份。
+- 全局备份覆盖记忆、成语词语、错题、常识政治、AI 审核队列与用量、训练、番茄钟、直播课、词语图谱和花生 800 词，不包含 DeepSeek API Key。
 - 导入备份前建议再次导出当前数据；“覆盖导入”会替换对应模块的数据。
 - AI 功能是可选的。API Key 只需填写一次，保存在当前浏览器；请求由浏览器直接发送到 DeepSeek。
 - HTTP 页面无法提供完整的传输安全保证。不要在不可信网络中输入 API Key，长期使用建议配置 HTTPS。
@@ -93,6 +94,8 @@ npm run prepublishOnly
 这个 npm 包提供可直接运行或部署的静态应用，不是用于 `import` 的 JavaScript SDK。Docker/Nginx 部署步骤见 [deployment/README.md](deployment/README.md)。部署到已有 Nginx 时，应使用独立端口或新增反向代理规则，避免影响服务器上的其他站点。
 
 `main` 分支通过全部测试后会自动部署体验站；推送与 `package.json` 版本一致的 `v*.*.*` 标签会触发 npm 发布。维护者配置说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+首次 npm 发布、Trusted Publisher、GitHub Actions 和阿里云原子部署的完整操作记录及流程图见 [npm 发布与 CI/CD 配置记录](docs/PUBLISHING_AND_DEPLOYMENT.md)。
 
 ## 参与项目
 
