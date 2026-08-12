@@ -7,6 +7,7 @@
   "files": [
     "apps/web",
     "deployment/docker",
+    "pics",
     "scripts/serve.mjs",
     "README.md",
     "LICENSE",
